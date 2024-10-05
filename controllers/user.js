@@ -1,6 +1,16 @@
 require('dotenv').config(); 
 
-const devices = {
+
+const axios = require('axios');
+const crypto = require('crypto');
+
+const User = require('../models/user');
+const Device = require('../models/device');
+
+const clientId = process.env.CLIENT_ID;
+const nonce = crypto.randomBytes(4).toString('hex'); // 8-digit alphanumeric random string
+
+const allDevices = {
   "thingList": [
     {
       "itemType": 1,
@@ -391,27 +401,6 @@ const devices = {
 };
 
 
-
-
-const axios = require('axios');
-const crypto = require('crypto');
-const querystring = require('querystring');
-
-const User = require('../models/user');
-
-const clientId = process.env.CLIENT_ID;
-const clientSecret = process.env.CLIENT_SECRET;
-const redirectUrl = process.env.REDIRECT_URL;
-const seq = Date.now().toString(); // Timestamp in milliseconds
-const nonce = crypto.randomBytes(4).toString('hex'); // 8-digit alphanumeric random string
-const authBaseUrl = process.env.AUTH_BASE_URL;
-
-const generateSignature = (data, secret) => {
-    return crypto.createHmac('sha256', secret)
-                 .update(data)
-                 .digest('base64');
-};
-
 module.exports = {
     checkEmail: async (req, res) => {
         let { email } = req.query;
@@ -440,6 +429,8 @@ module.exports = {
     
       try {
         const response = await axios.get(url, { headers });
+        console.log(response);
+
         res.status(200).json({ homes: response.data.data });
       } catch (error) {
         console.error('Error fetching devices:', error.response ? error.response.data : error.message);
@@ -458,11 +449,113 @@ module.exports = {
     
       try {
         const response = await axios.get(url, { headers });
+        const devices = response.data.data.thingList; 
+        for (const device of devices) {
+          const deviceData = {
+            itemType: device.itemType,
+            itemData: {
+              name: device.itemData.name,
+              deviceid: device.itemData.deviceid,
+              apikey: device.itemData.apikey,
+              extra: {
+                model: device.itemData.extra.model,
+                ui: device.itemData.extra.ui,
+                uiid: device.itemData.extra.uiid,
+                description: device.itemData.extra.description,
+                manufacturer: device.itemData.extra.manufacturer,
+                mac: device.itemData.extra.mac,
+                apmac: device.itemData.extra.apmac,
+                modelInfo: device.itemData.extra.modelInfo,
+                brandId: device.itemData.extra.brandId,
+              },
+              brandName: device.itemData.brandName,
+              brandLogo: device.itemData.brandLogo,
+              showBrand: device.itemData.showBrand,
+              productModel: device.itemData.productModel,
+              devGroups: device.itemData.devGroups,
+              tags: device.itemData.tags,
+              devConfig: device.itemData.devConfig,
+              settings: device.itemData.settings,
+              family: device.itemData.family,
+              sharedBy: device.itemData.sharedBy,
+              shareTo: device.itemData.shareTo,
+              devicekey: device.itemData.devicekey,
+              online: device.itemData.online,
+              params: device.itemData.params,
+              gsmInfoData: device.itemData.gsmInfoData,
+            },
+            index: device.index,
+          };
+
+          const updatedDevice = await Device.findOneAndUpdate(
+            { 'itemData.deviceid': device.itemData.deviceid },  
+            deviceData,  
+            { new: true, upsert: true } 
+          );
+        }
         // res.status(200).json({ devices: response.data.data });
-        res.status(200).json({ devices: devices });
+        res.status(200).json({ devices: allDevices });
       } catch (error) {
         console.error('Error fetching devices:', error.response ? error.response.data : error.message);
         res.status(500).json({ error: 'Error fetching devices.' });
       }
-    }
+    },
+    toggleSwitch: async (req, res) => {
+      let { deviceid, status } = req.body;
+      const url = `https://${req.user.region}-apia.coolkit.cc/v2/device/thing/status`;
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-ck-appid': clientId,
+        'x-ck-nonce': nonce,
+        'Authorization': `Bearer ${req.user.token}`,
+      };
+    
+      try {
+        const response = await axios.post(url, {
+          params: {
+            type: 1,
+            id: deviceid,
+            params: {
+              switch: status
+            }
+          }
+        }, { headers });
+        if (response.status !== 200) {
+          throw new Error('Failed to update device status');
+        }
+        res.status(200).json({ message: 'Device status updated successfully' });
+      } catch(error) {
+        console.error('Error updating device status :', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Error fetching devices.' });
+      }
+    },
+    toggleBrightness: async (req, res) => {
+      let { deviceid, brightness } = req.body;
+      const url = `https://${req.user.region}-apia.coolkit.cc/v2/device/thing/status`;
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-ck-appid': clientId,
+        'x-ck-nonce': nonce,
+        'Authorization': `Bearer ${req.user.token}`,
+      };
+    
+      try {
+        const response = await axios.post(url, {
+          params: {
+            type: 1,
+            id: deviceid,
+            params: {
+              brightness: brightness
+            }
+          }
+        }, { headers });        
+        if (response.status !== 200) {
+          throw new Error('Failed to update device brightness');
+        }
+        res.status(200).json({ message: 'Device status updated successfully' });
+      } catch(error) {
+        console.error('Error updating device brightness :', error.response ? error.response.data : error.message);
+        res.status(500).json({ error: 'Error fetching brightness.' });
+      }
+    },
 }

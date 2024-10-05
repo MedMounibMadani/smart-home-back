@@ -19,4 +19,8 @@ router.get('/check/email', userController.checkEmail);
 router.get('/homes', verifyTokenMiddleware, userController.fetchHomesAndRooms);
 router.get('/devices', verifyTokenMiddleware, userController.fetchDevices);
 
+// device
+router.post('/devices/toggle', verifyTokenMiddleware, userController.toggleSwitch);
+router.post('/devices/brightness', verifyTokenMiddleware, userController.toggleBrightness);
+
 module.exports = router;
