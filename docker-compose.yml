@@ -45,7 +45,20 @@ services:
       - POSTGRES_DB=sonarqube
     volumes:
       - sonarqube-db-data:/var/lib/postgresql/data
+  
+  sonar-scanner:
+    image: sonarsource/sonar-scanner-cli:latest
+    container_name: sonar-scanner
+    depends_on:
+      - sonarqube
+    environment:
+      - SONAR_HOST_URL=http://sonarqube:9000
+      - SONAR_LOGIN=sqa_2dce77d8a0ac3b66551994d62e40ce92dcb860d2       
+    volumes:
+      - .:/usr/src
+      - ./start-scanner.sh:/usr/local/bin/start-scanner.sh
+    command: ["/bin/sh", "/usr/local/bin/start-scanner.sh"]
 
 volumes:
-  mongo-data:
+  mongo-data: 
   sonarqube-db-data:

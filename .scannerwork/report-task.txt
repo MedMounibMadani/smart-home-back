@@ -1,0 +1,6 @@
+projectKey=smart-home-backend
+serverUrl=http://sonarqube:9000
+serverVersion=10.7.0.96327
+dashboardUrl=http://sonarqube:9000/dashboard?id=smart-home-backend
+ceTaskId=86823957-a745-469b-9c22-1f1c7d02df83
+ceTaskUrl=http://sonarqube:9000/api/ce/task?id=86823957-a745-469b-9c22-1f1c7d02df83
