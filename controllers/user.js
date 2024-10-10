@@ -6,6 +6,7 @@ const crypto = require('crypto');
 
 const User = require('../models/user');
 const Device = require('../models/device');
+const Action = require('../models/action');
 
 const clientId = process.env.CLIENT_ID;
 const nonce = crypto.randomBytes(4).toString('hex'); // 8-digit alphanumeric random string
@@ -429,8 +430,6 @@ module.exports = {
     
       try {
         const response = await axios.get(url, { headers });
-        console.log(response);
-
         res.status(200).json({ homes: response.data.data });
       } catch (error) {
         console.error('Error fetching devices:', error.response ? error.response.data : error.message);
@@ -558,4 +557,65 @@ module.exports = {
         res.status(500).json({ error: 'Error fetching brightness.' });
       }
     },
+    fetchActions: async (req, res) => {
+      try {
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({ message: 'User not authenticated' });
+        }
+        const myActions = await Action.find({ user: req.user.id });
+        res.status(200).json({ actions: myActions });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while fetching actions.', error });
+      }
+    },
+    saveAction: async (req, res) => {
+      try {
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({ message: 'User not authenticated' });
+        }
+        const { actionName, actionType, actionDate, devices, user } = req.body;
+        const newAction = new Action({
+          actionName,
+          actionType,
+          actionDate,
+          devices,
+          user: req.user.id
+        });
+        await newAction.save();
+        res.status(200).json({ action: newAction });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while saving the action.', error });
+      }
+    },
+    toggleAction: async (req, res) => {
+      try {
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({ message: 'User not authenticated' });
+        }
+        const { actionId, status } = req.body;
+        const updatedAction = await Action.findOneAndUpdate({ _id: actionId, user: req.user.id }, { enabled: status }, { new: true, upsert: true } );
+        if (!updatedAction) {
+          return res.status(404).json({ message: 'Action not found or you are not authorized to update this action' });
+        }
+        res.status(200).json({ message: 'Action updated successfully', updatedAction });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occurred while updating actions status.', error });
+      }
+    },
+    deleteAction: async (req, res) => {
+      try {
+        if (!req.user || !req.user.id) {
+          return res.status(401).json({ message: 'User not authenticated' });
+        }
+        const { actionId } = req.body;
+        await Action.findOneAndDelete({ _id: actionId });
+        res.status(200).json({ message: 'Action deleted successfully' });
+      } catch (error) {
+        consoloe.error(error);
+        res.status(500).json({ message: 'An error occurred while deleting action', error });
+      }
+    }
 }

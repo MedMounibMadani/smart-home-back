@@ -23,4 +23,10 @@ router.get('/devices', verifyTokenMiddleware, userController.fetchDevices);
 router.post('/devices/toggle', verifyTokenMiddleware, userController.toggleSwitch);
 router.post('/devices/brightness', verifyTokenMiddleware, userController.toggleBrightness);
 
+// action
+router.post('/action/save', verifyTokenMiddleware, userController.saveAction);
+router.post('/action/toggle', verifyTokenMiddleware, userController.toggleAction);
+router.post('/action/delete', verifyTokenMiddleware, userController.deleteAction);
+router.get('/actions', verifyTokenMiddleware, userController.fetchActions);
+
 module.exports = router;
