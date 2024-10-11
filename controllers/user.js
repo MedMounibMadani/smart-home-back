@@ -595,32 +595,36 @@ module.exports = {
         const momentDate = moment(actionDate);
         
         cron.schedule(`${momentDate.seconds()} ${momentDate.minutes()} ${momentDate.hours()} ${momentDate.date()} ${momentDate.month() + 1} *`, async () => {
-          try {
-            for (const deviceId of devices) {
-              let device = await Device.findOne({ 'itemData.deviceid' : deviceId });
-              console.log(`Turning ${actionType === 'Ouverture' ? 'on' : 'off'} device: ${device.itemData.name}`);           
-              try {
-                const response = await axios.post(url, {
-                  params: {
-                    type: 1,
-                    id: device.itemData.deviceid,
+          const executedAction = await Action.findOne({ user : req.user.id, actionName: actionName });
+          if (executedAction && executedAction.enabled) {
+            try {
+              for (const deviceId of devices) {
+                let device = await Device.findOne({ 'itemData.deviceid' : deviceId });
+                console.log(`Turning ${actionType === 'Ouverture' ? 'on' : 'off'} device: ${device.itemData.name}`);           
+                try {
+                  const response = await axios.post(url, {
                     params: {
-                      switch: actionType === 'Ouverture' ? 'on' : 'off'
+                      type: 1,
+                      id: device.itemData.deviceid,
+                      params: {
+                        switch: actionType === 'Ouverture' ? 'on' : 'off'
+                      }
                     }
+                  }, { headers });
+                  if (response.status !== 200) {
+                    throw new Error('Failed to update device status');
                   }
-                }, { headers });
-                if (response.status !== 200) {
-                  throw new Error('Failed to update device status');
+                } catch(error) {
+                  console.error('Error updating device status :', error.response ? error.response.data : error.message);
                 }
-              } catch(error) {
-                console.error('Error updating device status :', error.response ? error.response.data : error.message);
-              }
-              await sleep(1000);
-            };
-            console.log(`Action "${actionName}" executed for devices at ${actionDate}`);
-          } catch (error) {
-            console.error('Error executing action:', error);
+                await sleep(1000);
+              };
+              console.log(`Action "${actionName}" executed for devices at ${actionDate}`);
+            } catch (error) {
+              console.error('Error executing action:', error);
+            }
           }
+          else console.log(`Action ${actionName} cancelled.`);
         });
         res.status(200).json({ action: newAction });
       } catch (error) {
